@@ -25,7 +25,7 @@
         const { useState, useRef, useEffect } = React;
 
         // ============================================================================
-        // PELINDUNG ANTI-CRASH (ERROR BOUNDARY)
+        // PELINDUNG ANTI-CRASH
         // ============================================================================
         class ErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false, error: null }; }
@@ -45,7 +45,7 @@
         }
         
         // ============================================================================
-        // SISTEM IKON AMAN
+        // SISTEM IKON
         // ============================================================================
         const L = window.lucide || window.lucideReact || window.LucideReact || {};
         const dummyIcon = () => <span style={{display:'inline-block', width:'14px', height:'14px', backgroundColor:'#475569', borderRadius:'50%', margin:'0 4px'}}></span>;
@@ -74,6 +74,7 @@
         const ChevronDown = L.ChevronDown || dummyIcon;
         const History = L.History || dummyIcon;
         const Trash2 = L.Trash2 || dummyIcon;
+        const Settings = L.Settings || dummyIcon;
 
         // ============================================================================
         // SISTEM KEAMANAN API KEY
@@ -87,6 +88,13 @@
                 alert("Peringatan: API Key kosong. AI tidak akan berjalan.");
             }
         }
+
+        const resetApiKey = () => {
+            if (confirm("Ingin memasukkan API Key baru? Web akan dimuat ulang.")) {
+                localStorage.removeItem('gemini_api_key_azlan');
+                window.location.reload();
+            }
+        };
 
         // ============================================================================
         // KONSTANTA & DATA
@@ -122,9 +130,6 @@
 Caption:
 Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. #SkincareRoutine #Glowing #RekomendasiSkincare`;
 
-        // ============================================================================
-        // FUNGSI UTAMA APP
-        // ============================================================================
         function App() {
           const [appMode, setAppMode] = useState('promo');
           const [isProcessing, setIsProcessing] = useState(false);
@@ -163,7 +168,6 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
           const promoModelRef = useRef(null);
           const promoProductRef = useRef(null);
 
-          // State Vault (Riwayat)
           const [vaultHistory, setVaultHistory] = useState([]);
 
           useEffect(() => {
@@ -172,56 +176,36 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
           }, []);
 
           // ============================================================================
-          // LOGIKA PINTAR: AUTO-FALLBACK MODEL AI
+          // LOGIKA PINTAR: GUNAKAN GEMINI 1.5 FLASH (DIJAMIN FREE TIER BISA)
           // ============================================================================
-          const callGeminiSmart = async (payload) => {
-              // Coba model tercanggih dulu (Pro), kalau gagal otomatis turun ke model stabil (Flash)
-              const modelsToTry = ['gemini-1.5-pro', 'gemini-1.5-flash'];
-              let lastError = null;
-
-              for (const model of modelsToTry) {
-                  try {
-                      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify(payload)
-                      });
-                      const data = await res.json();
-                      if (data.error) throw new Error(data.error.message);
-                      console.log(`✅ Berhasil menggunakan model: ${model}`);
-                      return data;
-                  } catch (err) {
-                      console.warn(`⚠️ Model ${model} gagal:`, err.message);
-                      lastError = err;
-                  }
-              }
-              throw lastError; // Lemparkan error jika semua model gagal
+          const callGeminiAPI = async (payload) => {
+              const model = 'gemini-1.5-flash'; // Fixed to the most stable and available model
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify(payload)
+              });
+              const data = await res.json();
+              if (data.error) throw new Error(data.error.message);
+              return data;
           };
 
           // ============================================================================
-          // SISTEM VAULT (RIWAYAT PROYEK)
+          // SISTEM VAULT
           // ============================================================================
           const saveToVault = (type, mainImg, secImg, title, resultText) => {
               try {
                   const newItem = {
-                      id: Date.now(),
-                      date: new Date().toLocaleString('id-ID'),
-                      type: type, // 'image', 'video', 'promo'
-                      mainImg: mainImg,
-                      secImg: secImg,
-                      title: title,
-                      resultText: resultText
+                      id: Date.now(), date: new Date().toLocaleString('id-ID'), type: type,
+                      mainImg: mainImg, secImg: secImg, title: title, resultText: resultText
                   };
-                  // Ambil data lama
-                  const saved = localStorage.getItem('image_replica_vault');
-                  let vault = saved ? JSON.parse(saved) : [];
-                  
-                  // Tambahkan ke paling atas, batas max 5 proyek agar memori tidak penuh
+                  let vault = localStorage.getItem('image_replica_vault');
+                  vault = vault ? JSON.parse(vault) : [];
                   vault = [newItem, ...vault].slice(0, 5); 
                   localStorage.setItem('image_replica_vault', JSON.stringify(vault));
                   setVaultHistory(vault);
               } catch (e) {
-                  console.error("Storage penuh atau error saat menyimpan riwayat:", e);
+                  console.error("Storage penuh:", e);
               }
           };
 
@@ -233,7 +217,7 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
           };
 
           // ============================================================================
-          // HANDLERS UMUM
+          // HANDLERS
           // ============================================================================
           const handleFileUpload = (e, setPreview, setB64) => {
             const file = e.target.files[0];
@@ -247,9 +231,7 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
           const executeCopy = (text, callback) => {
             if (navigator.clipboard && window.isSecureContext) {
                 navigator.clipboard.writeText(text).then(callback).catch(() => fallbackCopy(text, callback));
-            } else {
-                fallbackCopy(text, callback);
-            }
+            } else { fallbackCopy(text, callback); }
           };
 
           const fallbackCopy = (text, callback) => {
@@ -257,12 +239,10 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
             callback();
           };
 
-          const triggerHaptic = () => {
-              if (navigator.vibrate) navigator.vibrate(50); // Getar halus untuk HP
-          };
+          const triggerHaptic = () => { if (navigator.vibrate) navigator.vibrate(50); };
 
           // ============================================================================
-          // LOGIKA ANALISIS & GENERATOR
+          // LOGIKA ANALISIS
           // ============================================================================
           const analyzeStandardImage = async () => {
             if (!stdBaseImgB64) { setError('Silakan unggah Gambar Referensi Utama terlebih dahulu.'); return; }
@@ -282,7 +262,7 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
             }
 
             try {
-              const data = await callGeminiSmart({ contents: [{ role: "user", parts }] });
+              const data = await callGeminiAPI({ contents: [{ role: "user", parts }] });
               setStdBasePrompt((data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim());
               setSuccessMsg('✅ Analisis Gambar Berhasil!');
               triggerHaptic();
@@ -324,14 +304,11 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
               if (audioConfig.source !== 'Tanpa Suara') prompt += ` They are speaking with a ${audioConfig.emotion === 'Auto' ? 'natural' : audioConfig.emotion} expression, featuring precise audio lip-sync.`;
               prompt += ` Art style: ${modifiers.artStyle||'cinematic hyper-realism'}. Lighting: ${modifiers.lighting||'cinematic lighting'}. Color Tone: ${modifiers.colorTone||'natural tone'}.`;
               if (stdBasePrompt) prompt += `\n\n(Base Visual Reference: ${stdBasePrompt})`;
-              if (videoModifiers.seed) prompt += `\nSeed: ${videoModifiers.seed}`;
-              if (audioConfig.source === 'Ketik Teks' && audioConfig.dialogueText) prompt += `\nDialogue Script: "${audioConfig.dialogueText}"`;
               promptResult = prompt;
             }
             
             setStdFinalPrompt(promptResult);
             
-            // Auto Copy & Save to Vault
             executeCopy(promptResult, () => {
                 setCopiedGlobalPrompt(true);
                 setSuccessMsg('✅ Prompt Dibuat & Tersalin Otomatis!');
@@ -367,21 +344,16 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
             };
 
             try {
-              const data = await callGeminiSmart(payload);
+              const data = await callGeminiAPI(payload);
               const resultData = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
               setStoryboardData(resultData);
-              
               setSuccessMsg('✅ Storyboard Berhasil Dibuat!');
               triggerHaptic();
-              
-              // Save to Vault
               saveToVault('promo', promoModelImg, promoProductImg, productName, resultData.caption || "Storyboard Promo");
               setTimeout(() => setSuccessMsg(''), 3000);
             } catch (err) {
               setError('Gagal memproses naskah: ' + err.message); 
-            } finally {
-              setIsProcessing(false);
-            }
+            } finally { setIsProcessing(false); }
           };
 
           const handleCopySingleScene = (scene, index) => {
@@ -406,14 +378,20 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
                     <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 p-3 rounded-xl text-white shadow-lg"><Sparkles size={28} /></div>
                     <div><h1 className="text-2xl font-black text-white tracking-tight">AI Master Prompt <span className="text-xs bg-rose-600 text-white px-2 py-0.5 rounded-full ml-1 align-top">PRO MAX</span></h1><p className="text-sm text-slate-400">Pusat Kreatif Visual & Naskah</p></div>
                   </div>
-                  <div className="flex gap-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-                    <button onClick={() => setAppMode('image')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'image' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><ImageIcon size={16}/> Gambar</button>
-                    <button onClick={() => setAppMode('video')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'video' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><Film size={16}/> Video</button>
-                    <button onClick={() => setAppMode('promo')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'promo' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><ListVideo size={16}/> Promosi</button>
+                  <div className="flex items-center gap-2">
+                    <div className="flex gap-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+                      <button onClick={() => setAppMode('image')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'image' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><ImageIcon size={16}/> Gambar</button>
+                      <button onClick={() => setAppMode('video')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'video' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><Film size={16}/> Video</button>
+                      <button onClick={() => setAppMode('promo')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'promo' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><ListVideo size={16}/> Promo</button>
+                    </div>
+                    {/* TOMBOL RESET API KEY */}
+                    <button onClick={resetApiKey} className="p-2.5 bg-slate-950 border border-slate-800 rounded-xl hover:bg-slate-800 text-slate-400 hover:text-white transition-colors" title="Pengaturan / Ganti API Key">
+                        <Settings size={20} />
+                    </button>
                   </div>
                 </div>
 
-                {/* NOTIFIKASI ERROR & SUCCESS */}
+                {/* NOTIFIKASI */}
                 {error && <div className="bg-red-900/50 text-red-300 p-4 rounded-xl flex items-center border border-red-900 animate-in slide-in-from-top-2"><AlertCircle className="mr-2"/> {error}</div>}
                 {successMsg && <div className="bg-emerald-900/50 text-emerald-400 font-bold p-4 rounded-xl flex items-center border border-emerald-900 shadow-lg shadow-emerald-900/20 animate-in slide-in-from-top-2"><Check className="mr-2"/> {successMsg}</div>}
 
@@ -492,7 +470,7 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
                       </div>
                     </div>
                     
-                    <div className="lg:col-span-8 bg-slate-900 rounded-2xl p-6 border border-slate-800 min-h-[500px] shadow-xl">
+                     <div className="lg:col-span-8 bg-slate-900 rounded-2xl p-6 border border-slate-800 min-h-[500px] shadow-xl">
                       <h2 className="text-lg font-bold text-white mb-4 flex items-center justify-between">
                         <span className="flex items-center gap-2"><Video size={18} className="text-rose-400"/> Hasil Auto-Storyboard AI</span>
                         {storyboardData && <span className="text-[10px] bg-emerald-900/50 text-emerald-400 px-2 py-1 rounded font-bold uppercase tracking-wider">Tersimpan di Riwayat</span>}
