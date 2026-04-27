@@ -8,25 +8,33 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.min.js"></script>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // PERBAIKAN 2: Kenalkan fungsi React ke browser
+        // 1. Kenalkan fungsi React
         const { useState, useRef } = React;
         
-        // PERBAIKAN 3: Kenalkan semua ikon ke browser
-        const { Upload, Video, Image: ImageIcon, Wand2, Copy, Check, AlertCircle, Loader2, ListVideo, ShoppingBag, UserCircle, Captions, Mic, Download, Film, Sparkles, MapPin, Palette, Volume2, Fingerprint, Hash, ChevronDown } = lucide;
+        // 2. PERBAIKAN FATAL: Nama variabel yang benar adalah lucideReact
+        const { Upload, Video, Image: ImageIcon, Wand2, Copy, Check, AlertCircle, Loader2, ListVideo, ShoppingBag, UserCircle, Captions, Mic, Download, Film, Sparkles, MapPin, Palette, Volume2, Fingerprint, Hash, ChevronDown } = lucideReact;
 
-        const API_KEY = ""; // Diisi otomatis oleh sistem
-
+        // 3. Sistem Keamanan API Key Pribadi
+        let API_KEY = localStorage.getItem('gemini_api_key_azlan');
+        if (!API_KEY) {
+            API_KEY = prompt("🔐 Sistem Keamanan: Masukkan Gemini API Key Anda untuk mengaktifkan otak AI:");
+            if (API_KEY) {
+                localStorage.setItem('gemini_api_key_azlan', API_KEY);
+            } else {
+                alert("Peringatan: API Key kosong. AI tidak akan merespon perintah Anda.");
+            }
+        }
 
 // ============================================================================
 // KONSTANTA & OPSI DROPDOWN (MODE GAMBAR & VIDEO BIASA)
 // ============================================================================
-const SHARED_MODIFIER_OPTIONS = {
+
   gender: { label: 'Gender / Subjek', options: ['', '1boy, male', '1girl, female', 'androgynous', 'non-binary', 'a person'] },
   attire: { label: 'Gaya Pakaian', options: ['', 'Casual wear', 'Formal suit', 'Cyberpunk techwear', 'Fantasy armor', 'Traditional clothing', 'School uniform', 'Sportswear', 'Gothic fashion', 'Haute couture dress'] },
   background: { label: 'Latar Belakang', options: ['', 'Empty studio (White)', 'Empty studio (Dark)', 'Cyberpunk city street', 'Fantasy forest', 'Bedroom', 'Beach', 'Mountains', 'Outer space', 'Fashion runway', 'Ancient temple'] },
