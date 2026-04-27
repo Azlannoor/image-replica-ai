@@ -1,4 +1,4 @@
-<meta name='viewport' content='width=device-width, initial-scale=1'/><!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
@@ -24,7 +24,7 @@
     <script type="text/babel">
         const { useState, useRef } = React;
 
-        // 1. PELINDUNG ANTI-CRASH (ERROR BOUNDARY)
+        // 1. PELINDUNG ANTI-CRASH
         class ErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false, error: null }; }
             static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -32,8 +32,7 @@
                 if (this.state.hasError) {
                     return (
                         <div style={{ padding: '20px', color: '#f87171', fontFamily: 'monospace', background: '#450a0a', minHeight: '100vh' }}>
-                            <h2>⚠️ Terjadi Kesalahan Sistem (Tapi Tidak Blank!)</h2>
-                            <p>Tolong screenshot layar ini dan kirimkan ke saya:</p>
+                            <h2>⚠️ Terjadi Kesalahan Sistem</h2>
                             <pre style={{ background: '#000', padding: '10px', marginTop: '10px' }}>{this.state.error.toString()}</pre>
                         </div>
                     );
@@ -42,7 +41,7 @@
             }
         }
         
-        // 2. SISTEM IKON KEBANG BERKALI-LIPAT (FOOLPROOF)
+        // 2. SISTEM IKON
         const L = window.lucide || window.lucideReact || window.LucideReact || {};
         const dummyIcon = () => <span style={{display:'inline-block', width:'14px', height:'14px', backgroundColor:'#475569', borderRadius:'50%', margin:'0 4px'}}></span>;
         
@@ -76,7 +75,7 @@
             if (API_KEY) {
                 localStorage.setItem('gemini_api_key_azlan', API_KEY);
             } else {
-                alert("Peringatan: API Key kosong. Fitur AI tidak akan berjalan.");
+                alert("Peringatan: API Key kosong. AI tidak akan berjalan.");
             }
         }
 
@@ -190,12 +189,13 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
             }
 
             try {
-              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`, 
+              // STABLE MODEL: gemini-1.5-flash
+              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, 
                 { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: "user", parts }] }) });
               const data = await res.json();
               if(data.error) throw new Error(data.error.message);
               setStdBasePrompt((data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim());
-            } catch (err) { setError('Gagal menganalisis gambar: Pastikan API Key valid. ' + err.message); } 
+            } catch (err) { setError('Gagal menganalisis gambar: ' + err.message); } 
             finally { setIsProcessing(false); }
           };
 
@@ -265,14 +265,15 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
             let retries = 0;
             while (retries < 3) {
               try {
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${API_KEY}`, 
+                // STABLE MODEL: gemini-1.5-flash
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, 
                   { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
                 const data = await res.json();
                 if(data.error) throw new Error(data.error.message);
                 setStoryboardData(JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text));
                 setIsProcessing(false); return;
               } catch (err) {
-                retries++; if (retries >= 3) { setError('Gagal memproses naskah: Cek API Key Anda. ' + err.message); setIsProcessing(false); }
+                retries++; if (retries >= 3) { setError('Gagal memproses naskah: ' + err.message); setIsProcessing(false); }
                 await new Promise(r => setTimeout(r, 2000));
               }
             }
@@ -360,7 +361,7 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
                       
                       <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800">
                         <h2 className="text-lg font-bold text-white mb-2">2. Masukkan Naskah</h2>
-                        <textarea value={scriptInput} onChange={(e) => setScriptInput(e.target.value)} className="w-full h-48 bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-slate-300 outline-none focus:border-rose-500" placeholder="Paste naskah promosi Anda di sini..." />
+                        <textarea value={scriptInput} onChange={(e) => setScriptInput(e.target.value)} className="w-full h-48 bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-slate-300 outline-none focus:border-rose-500" />
                         <button onClick={generateVideoStoryboard} disabled={isProcessing} className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-xl disabled:opacity-50 transition-all shadow-lg shadow-orange-900/20">
                           {isProcessing ? 'MEMPROSES...' : 'PROSES STORYBOARD'}
                         </button>
@@ -375,9 +376,8 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
                             <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
                               <div className="flex justify-between items-center"><span className="text-rose-400 font-bold text-sm">{scene.segment} ({scene.duration})</span><span className="bg-slate-800 px-2 py-1 text-[10px] text-orange-400 rounded">Nada: {scene.detectedTone}</span></div>
                               <textarea readOnly value={`--VISUAL INSTRUCTIONS--\n${scene.visualPrompt}\n\n--AUDIO & LIP-SYNC SCRIPT--\n${scene.audio}`} className="w-full h-32 bg-slate-900 p-3 text-xs text-slate-300 border border-slate-800 rounded mt-2 resize-none outline-none" />
-                              <button onClick={() => handleCopySingleScene(scene, idx)} className={`self-end flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs transition-all border ${copiedSceneIndexes[idx] ? 'bg-green-600/20 text-green-400 border-green-900' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'}`}>
-                                <Check size={14} className={copiedSceneIndexes[idx] ? 'inline' : 'hidden'} />
-                                <Copy size={14} className={copiedSceneIndexes[idx] ? 'hidden' : 'inline'} />
+                              <button onClick={() => handleCopySingleScene(scene, idx)} className={`self-end flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs transition-all border ${copiedSceneIndexes[idx] ? 'bg-green-600/20 text-green-400 border-green-900' : 'bg-slate-800 text-slate-200 border-slate-600 hover:bg-slate-700'}`}>
+                                {copiedSceneIndexes[idx] ? <Check size={14} /> : <Copy size={14} />} 
                                 {copiedSceneIndexes[idx] ? 'Tersalin!' : 'Copy Prompt Lengkap'}
                               </button>
                             </div>
