@@ -16,15 +16,17 @@
 <body class="bg-slate-950">
     <div id="root">
         <div style="color: #94a3b8; padding: 50px; text-align: center; font-family: sans-serif;">
-            Memuat Sistem AI Master Prompt...<br><br>
+            Memuat Sistem AI Master Prompt Pro Max...<br><br>
             <small>Tunggu sebentar...</small>
         </div>
     </div>
 
     <script type="text/babel">
-        const { useState, useRef } = React;
+        const { useState, useRef, useEffect } = React;
 
-        // 1. PELINDUNG ANTI-CRASH
+        // ============================================================================
+        // PELINDUNG ANTI-CRASH (ERROR BOUNDARY)
+        // ============================================================================
         class ErrorBoundary extends React.Component {
             constructor(props) { super(props); this.state = { hasError: false, error: null }; }
             static getDerivedStateFromError(error) { return { hasError: true, error }; }
@@ -34,6 +36,7 @@
                         <div style={{ padding: '20px', color: '#f87171', fontFamily: 'monospace', background: '#450a0a', minHeight: '100vh' }}>
                             <h2>⚠️ Terjadi Kesalahan Sistem</h2>
                             <pre style={{ background: '#000', padding: '10px', marginTop: '10px' }}>{this.state.error.toString()}</pre>
+                            <button onClick={() => window.location.reload()} style={{ padding: '10px', marginTop: '20px', background: '#f87171', color: '#000', fontWeight: 'bold', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>Muat Ulang Aplikasi</button>
                         </div>
                     );
                 }
@@ -41,7 +44,9 @@
             }
         }
         
-        // 2. SISTEM IKON
+        // ============================================================================
+        // SISTEM IKON AMAN
+        // ============================================================================
         const L = window.lucide || window.lucideReact || window.LucideReact || {};
         const dummyIcon = () => <span style={{display:'inline-block', width:'14px', height:'14px', backgroundColor:'#475569', borderRadius:'50%', margin:'0 4px'}}></span>;
         
@@ -67,8 +72,12 @@
         const Fingerprint = L.Fingerprint || dummyIcon;
         const Hash = L.Hash || dummyIcon;
         const ChevronDown = L.ChevronDown || dummyIcon;
+        const History = L.History || dummyIcon;
+        const Trash2 = L.Trash2 || dummyIcon;
 
-        // 3. SISTEM KEAMANAN API KEY
+        // ============================================================================
+        // SISTEM KEAMANAN API KEY
+        // ============================================================================
         let API_KEY = localStorage.getItem('gemini_api_key_azlan');
         if (!API_KEY) {
             API_KEY = prompt("🔐 SISTEM KEAMANAN\n\nMasukkan Gemini API Key Anda untuk mengaktifkan AI:");
@@ -105,8 +114,6 @@
           bgDynamics: { label: 'Dinamika Latar', options: ['Auto', 'Statis', 'Angin Sepoi-sepoi', 'Hujan', 'Salju Turun', 'Partikel Debu Mengambang', 'Lampu Berkedip'] }
         };
 
-        const AUDIO_EMOTIONS = ['Auto', 'Datar', 'Ceria', 'Antusias', 'Sedih', 'Serius', 'Berbisik'];
-
         const DEFAULT_SCRIPT_TEMPLATE = `[0-5 dtk] Hook: "Pernah ngerasa wajah kusam walau udah pakai skincare mahal?" (bingung dan frustrasi)
 [5-15 dtk] Show: "Untung aku nemu serum ajaib ini!" (ceria dan antusias sambil memegang produk)
 [15-25 dtk] Value: "Teksturnya super ringan, cepet nyerap, dan bikin glowing seharian." (Kamera zoom in perlahan ke produk, lalu ke wajah model yang bercahaya)
@@ -115,12 +122,15 @@
 Caption:
 Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. #SkincareRoutine #Glowing #RekomendasiSkincare`;
 
-        const DEFAULT_TONES = ['Natural / Netral', 'Ceria & Antusias', 'Serius & Profesional', 'Sedih / Empati', 'Tegas & Berwibawa', 'Santai / Kasual'];
-
+        // ============================================================================
+        // FUNGSI UTAMA APP
+        // ============================================================================
         function App() {
           const [appMode, setAppMode] = useState('promo');
           const [isProcessing, setIsProcessing] = useState(false);
           const [error, setError] = useState('');
+          const [successMsg, setSuccessMsg] = useState('');
+          
           const [copiedGlobalPrompt, setCopiedGlobalPrompt] = useState(false);
           const [copiedSceneIndexes, setCopiedSceneIndexes] = useState({});
           
@@ -139,22 +149,92 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
           const [videoModifiers, setVideoModifiers] = useState({ subjectAction: 'Auto', cameraMovement: 'Auto', bgDynamics: 'Auto', faceLock: 100, seed: '' });
           const [audioConfig, setAudioConfig] = useState({ source: 'Tanpa Suara', dialogueText: '', emotion: 'Auto' });
 
-          const stdBaseImgRef = useRef(null);
-          const stdFaceImgRef = useRef(null);
-
           const [promoModelImg, setPromoModelImg] = useState(null);
           const [promoModelB64, setPromoModelB64] = useState('');
           const [promoProductImg, setPromoProductImg] = useState(null);
           const [promoProductB64, setPromoProductB64] = useState('');
-          
           const [productName, setProductName] = useState('');
           const [promoFaceLock, setPromoFaceLock] = useState(100);
           const [scriptInput, setScriptInput] = useState(DEFAULT_SCRIPT_TEMPLATE);
           const [storyboardData, setStoryboardData] = useState(null);
 
+          const stdBaseImgRef = useRef(null);
+          const stdFaceImgRef = useRef(null);
           const promoModelRef = useRef(null);
           const promoProductRef = useRef(null);
 
+          // State Vault (Riwayat)
+          const [vaultHistory, setVaultHistory] = useState([]);
+
+          useEffect(() => {
+              const savedVault = localStorage.getItem('image_replica_vault');
+              if (savedVault) setVaultHistory(JSON.parse(savedVault));
+          }, []);
+
+          // ============================================================================
+          // LOGIKA PINTAR: AUTO-FALLBACK MODEL AI
+          // ============================================================================
+          const callGeminiSmart = async (payload) => {
+              // Coba model tercanggih dulu (Pro), kalau gagal otomatis turun ke model stabil (Flash)
+              const modelsToTry = ['gemini-1.5-pro', 'gemini-1.5-flash'];
+              let lastError = null;
+
+              for (const model of modelsToTry) {
+                  try {
+                      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${API_KEY}`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify(payload)
+                      });
+                      const data = await res.json();
+                      if (data.error) throw new Error(data.error.message);
+                      console.log(`✅ Berhasil menggunakan model: ${model}`);
+                      return data;
+                  } catch (err) {
+                      console.warn(`⚠️ Model ${model} gagal:`, err.message);
+                      lastError = err;
+                  }
+              }
+              throw lastError; // Lemparkan error jika semua model gagal
+          };
+
+          // ============================================================================
+          // SISTEM VAULT (RIWAYAT PROYEK)
+          // ============================================================================
+          const saveToVault = (type, mainImg, secImg, title, resultText) => {
+              try {
+                  const newItem = {
+                      id: Date.now(),
+                      date: new Date().toLocaleString('id-ID'),
+                      type: type, // 'image', 'video', 'promo'
+                      mainImg: mainImg,
+                      secImg: secImg,
+                      title: title,
+                      resultText: resultText
+                  };
+                  // Ambil data lama
+                  const saved = localStorage.getItem('image_replica_vault');
+                  let vault = saved ? JSON.parse(saved) : [];
+                  
+                  // Tambahkan ke paling atas, batas max 5 proyek agar memori tidak penuh
+                  vault = [newItem, ...vault].slice(0, 5); 
+                  localStorage.setItem('image_replica_vault', JSON.stringify(vault));
+                  setVaultHistory(vault);
+              } catch (e) {
+                  console.error("Storage penuh atau error saat menyimpan riwayat:", e);
+              }
+          };
+
+          const clearVault = () => {
+              if (confirm("Yakin ingin menghapus semua riwayat proyek?")) {
+                  localStorage.removeItem('image_replica_vault');
+                  setVaultHistory([]);
+              }
+          };
+
+          // ============================================================================
+          // HANDLERS UMUM
+          // ============================================================================
           const handleFileUpload = (e, setPreview, setB64) => {
             const file = e.target.files[0];
             if (!file) return;
@@ -165,15 +245,28 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
           };
 
           const executeCopy = (text, callback) => {
-            navigator.clipboard.writeText(text).catch(() => {
-                const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
-            });
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(callback).catch(() => fallbackCopy(text, callback));
+            } else {
+                fallbackCopy(text, callback);
+            }
+          };
+
+          const fallbackCopy = (text, callback) => {
+            const ta = document.createElement('textarea'); ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
             callback();
           };
 
+          const triggerHaptic = () => {
+              if (navigator.vibrate) navigator.vibrate(50); // Getar halus untuk HP
+          };
+
+          // ============================================================================
+          // LOGIKA ANALISIS & GENERATOR
+          // ============================================================================
           const analyzeStandardImage = async () => {
             if (!stdBaseImgB64) { setError('Silakan unggah Gambar Referensi Utama terlebih dahulu.'); return; }
-            setIsProcessing(true); setError('');
+            setIsProcessing(true); setError(''); setSuccessMsg('');
 
             let parts = [];
             const sysInstruction = "You are an expert Vision AI. Provide a highly detailed description of the subject's physical features, clothing materials, and background details. Format: English language, comma-separated keywords. No full sentences.";
@@ -189,17 +282,17 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
             }
 
             try {
-              // STABLE MODEL: gemini-1.5-flash
-              const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, 
-                { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ role: "user", parts }] }) });
-              const data = await res.json();
-              if(data.error) throw new Error(data.error.message);
+              const data = await callGeminiSmart({ contents: [{ role: "user", parts }] });
               setStdBasePrompt((data.candidates?.[0]?.content?.parts?.[0]?.text || '').trim());
+              setSuccessMsg('✅ Analisis Gambar Berhasil!');
+              triggerHaptic();
+              setTimeout(() => setSuccessMsg(''), 3000);
             } catch (err) { setError('Gagal menganalisis gambar: ' + err.message); } 
             finally { setIsProcessing(false); }
           };
 
           const generateStandardPrompt = () => {
+            let promptResult = '';
             if (appMode === 'image') {
               const parts = ["(masterpiece, best quality, ultra-detailed, 8k resolution, highres:1.3)"];
               if (modifiers.artStyle) parts.push(modifiers.artStyle);
@@ -220,7 +313,7 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
               if (modifiers.bodyShape === 'Exact Replica (Kunci Proporsi Asli)') exactReplicaActive = true;
 
               if (exactReplicaActive) parts.push("The subject MUST maintain the EXACT identical pose, posture, and precise body proportions/shape as the original reference image. STRICTLY lock the body type, do not reconstruct or alter the figure.");
-              setStdFinalPrompt(parts.filter(Boolean).join(', '));
+              promptResult = parts.filter(Boolean).join(', ');
             } else {
               const action = videoModifiers.subjectAction === 'Auto' ? 'moving naturally' : videoModifiers.subjectAction;
               const cam = videoModifiers.cameraMovement === 'Auto' ? 'cinematic and steady' : videoModifiers.cameraMovement;
@@ -233,14 +326,25 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
               if (stdBasePrompt) prompt += `\n\n(Base Visual Reference: ${stdBasePrompt})`;
               if (videoModifiers.seed) prompt += `\nSeed: ${videoModifiers.seed}`;
               if (audioConfig.source === 'Ketik Teks' && audioConfig.dialogueText) prompt += `\nDialogue Script: "${audioConfig.dialogueText}"`;
-              setStdFinalPrompt(prompt);
+              promptResult = prompt;
             }
+            
+            setStdFinalPrompt(promptResult);
+            
+            // Auto Copy & Save to Vault
+            executeCopy(promptResult, () => {
+                setCopiedGlobalPrompt(true);
+                setSuccessMsg('✅ Prompt Dibuat & Tersalin Otomatis!');
+                triggerHaptic();
+                saveToVault(appMode, stdBaseImgPreview, stdFaceImgPreview, `Prompt ${appMode.toUpperCase()}`, promptResult);
+                setTimeout(() => { setCopiedGlobalPrompt(false); setSuccessMsg(''); }, 3000);
+            });
           };
 
           const generateVideoStoryboard = async () => {
             if (!scriptInput.trim()) { setError('Naskah tidak boleh kosong.'); return; }
             if (!productName.trim()) { setError('Nama produk wajib diisi.'); return; }
-            setIsProcessing(true); setError(''); setStoryboardData(null);
+            setIsProcessing(true); setError(''); setSuccessMsg(''); setStoryboardData(null);
 
             const systemPrompt = `You are an expert AI Video Director. Process the user's affiliate marketing script into a highly structured Storyboard. Analyze segments (Hook, Show, Value, CTA). CRITICAL INSTRUCTIONS: 1. Visual prompts MUST be in English. 2. EVERY visual prompt MUST end with: "Model face MUST be 100% identical to the reference image (Face Lock at ${promoFaceLock}%). The product ${productName} must strictly maintain its original label, text, and shape." 3. Extract exact Indonesian audio script.`;
 
@@ -262,20 +366,21 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
               }
             };
 
-            let retries = 0;
-            while (retries < 3) {
-              try {
-                // STABLE MODEL: gemini-1.5-flash
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, 
-                  { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-                const data = await res.json();
-                if(data.error) throw new Error(data.error.message);
-                setStoryboardData(JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text));
-                setIsProcessing(false); return;
-              } catch (err) {
-                retries++; if (retries >= 3) { setError('Gagal memproses naskah: ' + err.message); setIsProcessing(false); }
-                await new Promise(r => setTimeout(r, 2000));
-              }
+            try {
+              const data = await callGeminiSmart(payload);
+              const resultData = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text);
+              setStoryboardData(resultData);
+              
+              setSuccessMsg('✅ Storyboard Berhasil Dibuat!');
+              triggerHaptic();
+              
+              // Save to Vault
+              saveToVault('promo', promoModelImg, promoProductImg, productName, resultData.caption || "Storyboard Promo");
+              setTimeout(() => setSuccessMsg(''), 3000);
+            } catch (err) {
+              setError('Gagal memproses naskah: ' + err.message); 
+            } finally {
+              setIsProcessing(false);
             }
           };
 
@@ -283,115 +388,178 @@ Rahasia glowing seharian tanpa ribet! ✨ Dapatkan diskon spesial hari ini aja. 
             const textToCopy = `--VISUAL INSTRUCTIONS--\n${scene.visualPrompt}\n\n--AUDIO & LIP-SYNC SCRIPT--\n${scene.audio}`;
             executeCopy(textToCopy, () => {
               setCopiedSceneIndexes(prev => ({ ...prev, [index]: true }));
+              triggerHaptic();
               setTimeout(() => setCopiedSceneIndexes(prev => ({ ...prev, [index]: false })), 2000);
             });
           };
 
+          // ============================================================================
+          // RENDER UI
+          // ============================================================================
           return (
             <div className="min-h-screen text-slate-200 font-sans p-4 md:p-8">
               <div className="max-w-7xl mx-auto space-y-6">
                 
+                {/* HEADER */}
                 <div className="bg-slate-900 rounded-2xl p-5 border border-slate-800 flex flex-col xl:flex-row items-center justify-between gap-4">
                   <div className="flex items-center space-x-4">
-                    <div className="bg-rose-600 p-3 rounded-xl text-white"><Sparkles size={28} /></div>
-                    <div><h1 className="text-2xl font-black text-white">AI Master Prompt</h1><p className="text-sm text-slate-400">Pusat Kreatif Visual & Naskah</p></div>
+                    <div className="bg-gradient-to-br from-indigo-500 via-purple-500 to-rose-500 p-3 rounded-xl text-white shadow-lg"><Sparkles size={28} /></div>
+                    <div><h1 className="text-2xl font-black text-white tracking-tight">AI Master Prompt <span className="text-xs bg-rose-600 text-white px-2 py-0.5 rounded-full ml-1 align-top">PRO MAX</span></h1><p className="text-sm text-slate-400">Pusat Kreatif Visual & Naskah</p></div>
                   </div>
                   <div className="flex gap-1 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
-                    <button onClick={() => setAppMode('image')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'image' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>Gambar</button>
-                    <button onClick={() => setAppMode('video')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'video' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>Video</button>
-                    <button onClick={() => setAppMode('promo')} className={`px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'promo' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}>Video Promosi</button>
+                    <button onClick={() => setAppMode('image')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'image' ? 'bg-indigo-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><ImageIcon size={16}/> Gambar</button>
+                    <button onClick={() => setAppMode('video')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'video' ? 'bg-purple-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><Film size={16}/> Video</button>
+                    <button onClick={() => setAppMode('promo')} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-sm transition-all ${appMode === 'promo' ? 'bg-rose-600 text-white shadow-md' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'}`}><ListVideo size={16}/> Promosi</button>
                   </div>
                 </div>
 
-                {error && <div className="bg-red-900/50 text-red-300 p-4 rounded-xl flex items-center border border-red-900"><AlertCircle className="mr-2"/> {error}</div>}
+                {/* NOTIFIKASI ERROR & SUCCESS */}
+                {error && <div className="bg-red-900/50 text-red-300 p-4 rounded-xl flex items-center border border-red-900 animate-in slide-in-from-top-2"><AlertCircle className="mr-2"/> {error}</div>}
+                {successMsg && <div className="bg-emerald-900/50 text-emerald-400 font-bold p-4 rounded-xl flex items-center border border-emerald-900 shadow-lg shadow-emerald-900/20 animate-in slide-in-from-top-2"><Check className="mr-2"/> {successMsg}</div>}
 
+                {/* MODE: GAMBAR & VIDEO BIASA */}
                 {(appMode === 'image' || appMode === 'video') && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 animate-in fade-in duration-300">
-                    <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 space-y-4">
-                      <h2 className="text-lg font-bold text-white mb-2">1. Referensi Visual</h2>
-                      <div onClick={() => stdBaseImgRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 p-4 text-center cursor-pointer rounded-xl hover:border-slate-500 transition-all">
+                    <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 space-y-4 shadow-xl">
+                      <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><MapPin size={18} className="text-indigo-400"/> 1. Referensi Visual</h2>
+                      <div onClick={() => stdBaseImgRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 p-4 text-center cursor-pointer rounded-xl hover:border-slate-500 transition-all overflow-hidden">
                         <input type="file" ref={stdBaseImgRef} onChange={(e) => handleFileUpload(e, setStdBaseImgPreview, setStdBaseImgB64)} accept="image/*" className="hidden" />
-                        {stdBaseImgPreview ? <img src={stdBaseImgPreview} className="w-full rounded-lg" /> : <div className="py-4 text-slate-400">Klik Unggah Referensi Utama</div>}
+                        {stdBaseImgPreview ? <img src={stdBaseImgPreview} className="w-full h-48 object-contain rounded-lg" /> : <div className="py-8 text-slate-400 flex flex-col items-center"><Upload size={24} className="mb-2"/>Klik Unggah Referensi Utama</div>}
                       </div>
-                      <div onClick={() => stdFaceImgRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 p-3 text-center cursor-pointer rounded-xl hover:border-slate-500 transition-all">
+                      <div onClick={() => stdFaceImgRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 p-3 text-center cursor-pointer rounded-xl hover:border-slate-500 transition-all overflow-hidden">
                         <input type="file" ref={stdFaceImgRef} onChange={(e) => handleFileUpload(e, setStdFaceImgPreview, setStdFaceImgB64)} accept="image/*" className="hidden" />
-                        {stdFaceImgPreview ? <img src={stdFaceImgPreview} className="w-full rounded-lg" /> : <div className="text-sm text-slate-400">+ Tambah Wajah (Opsional)</div>}
+                        {stdFaceImgPreview ? <img src={stdFaceImgPreview} className="w-full h-32 object-contain rounded-lg" /> : <div className="text-sm font-bold text-slate-500 py-2 flex items-center justify-center gap-2"><Fingerprint size={16}/> + Tambah Wajah Opsional</div>}
                       </div>
-                      <button onClick={analyzeStandardImage} disabled={!stdBaseImgB64 || isProcessing} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl transition-colors">{isProcessing ? 'Menganalisis...' : 'Analisis Gambar'}</button>
-                      {stdBasePrompt && <p className="text-xs text-slate-400 mt-2 bg-slate-950 p-3 rounded-lg border border-slate-800">{stdBasePrompt}</p>}
+                      <button onClick={analyzeStandardImage} disabled={!stdBaseImgB64 || isProcessing} className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl transition-colors flex justify-center items-center gap-2 border border-slate-600 disabled:opacity-50">
+                          {isProcessing ? <><Loader2 size={18} className="animate-spin"/> Menganalisis...</> : <><Wand2 size={18}/> Analisis Gambar</>}
+                      </button>
+                      {stdBasePrompt && <p className="text-xs text-slate-400 mt-2 bg-slate-950 p-3 rounded-lg border border-slate-800 leading-relaxed"><span className="font-bold text-indigo-400 block mb-1">Hasil Base Prompt:</span>{stdBasePrompt}</p>}
                     </div>
 
-                    <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800">
-                      <h2 className="text-lg font-bold text-white mb-4">2. Modifikasi Global</h2>
-                      <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
+                      <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Palette size={18} className="text-indigo-400"/> 2. Modifikasi Global</h2>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                         {Object.entries(SHARED_MODIFIER_OPTIONS).map(([key, config]) => (
                           <div key={key}>
-                            <label className="text-[10px] font-bold text-slate-400 block mb-1">{config.label}</label>
-                            <select value={modifiers[key]} onChange={(e) => setModifiers(prev => ({ ...prev, [key]: e.target.value }))} className="w-full bg-slate-950 border border-slate-700 text-xs rounded-lg p-2 text-white outline-none focus:border-indigo-500">
-                              {config.options.map(opt => <option key={opt} value={opt}>{opt || '-- Auto --'}</option>)}
-                            </select>
+                            <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-tight">{config.label}</label>
+                            <div className="relative">
+                                <select value={modifiers[key]} onChange={(e) => setModifiers(prev => ({ ...prev, [key]: e.target.value }))} className="w-full appearance-none bg-slate-950 border border-slate-700 text-xs rounded-lg pl-2 pr-7 py-2.5 text-slate-200 outline-none focus:border-indigo-500">
+                                {config.options.map((opt, i) => <option key={i} value={opt}>{opt || '-- Auto --'}</option>)}
+                                </select>
+                                <ChevronDown size={14} className="absolute right-2 top-2.5 text-slate-500 pointer-events-none"/>
+                            </div>
                           </div>
                         ))}
                       </div>
-                      <button onClick={generateStandardPrompt} className="w-full mt-6 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-4 rounded-xl transition-all shadow-lg shadow-indigo-900/20">BUAT PROMPT AKHIR</button>
-                      <textarea readOnly value={stdFinalPrompt} className="w-full h-32 mt-4 bg-slate-950 border border-slate-700 text-slate-300 p-3 rounded-lg text-xs resize-none" placeholder="Hasil prompt di sini..."/>
+                      
+                      <button onClick={generateStandardPrompt} className={`w-full mt-6 text-white font-black py-4 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 active:scale-95 ${appMode === 'image' ? 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-900/30' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-900/30'}`}>
+                          <Sparkles size={18}/> BUAT & SALIN PROMPT
+                      </button>
+                      <textarea readOnly value={stdFinalPrompt} className="w-full h-32 mt-4 bg-slate-950 border border-slate-700 text-slate-300 p-3 rounded-lg text-xs resize-none font-mono" placeholder="Hasil prompt akan otomatis tersalin ke clipboard..."/>
                     </div>
                   </div>
                 )}
 
+                {/* MODE: VIDEO PROMOSI */}
                 {appMode === 'promo' && (
                   <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 animate-in fade-in duration-300">
                     <div className="lg:col-span-4 space-y-6">
-                      <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800">
-                        <h2 className="text-lg font-bold text-white mb-4">1. Referensi Promosi</h2>
+                      <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
+                        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><UserCircle size={18} className="text-rose-400"/> 1. Referensi Promosi</h2>
                         <div className="grid grid-cols-2 gap-3 mb-4">
-                          <div onClick={() => promoModelRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 h-24 flex items-center justify-center text-center cursor-pointer rounded-lg relative overflow-hidden group">
+                          <div onClick={() => promoModelRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 h-28 flex flex-col items-center justify-center text-center cursor-pointer rounded-lg relative overflow-hidden group hover:border-rose-500 transition-colors">
                             <input type="file" ref={promoModelRef} onChange={(e) => handleFileUpload(e, setPromoModelImg, setPromoModelB64)} accept="image/*" className="hidden" />
-                            {promoModelImg ? <img src={promoModelImg} className="absolute w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" /> : <span className="text-[10px] text-slate-400">Foto Model</span>}
+                            {promoModelImg ? <img src={promoModelImg} className="absolute inset-0 w-full h-full object-cover opacity-60" /> : <><UserCircle size={20} className="text-slate-500 mb-1"/><span className="text-[10px] font-bold text-slate-400">Foto Model</span></>}
                           </div>
-                          <div onClick={() => promoProductRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 h-24 flex items-center justify-center text-center cursor-pointer rounded-lg relative overflow-hidden group">
+                          <div onClick={() => promoProductRef.current.click()} className="border-2 border-dashed border-slate-700 bg-slate-950 h-28 flex flex-col items-center justify-center text-center cursor-pointer rounded-lg relative overflow-hidden group hover:border-rose-500 transition-colors">
                             <input type="file" ref={promoProductRef} onChange={(e) => handleFileUpload(e, setPromoProductImg, setPromoProductB64)} accept="image/*" className="hidden" />
-                            {promoProductImg ? <img src={promoProductImg} className="absolute w-full h-full object-cover opacity-50 group-hover:opacity-30 transition-opacity" /> : <span className="text-[10px] text-slate-400">Foto Produk</span>}
+                            {promoProductImg ? <img src={promoProductImg} className="absolute inset-0 w-full h-full object-cover opacity-60" /> : <><ShoppingBag size={20} className="text-slate-500 mb-1"/><span className="text-[10px] font-bold text-slate-400">Foto Produk</span></>}
                           </div>
                         </div>
-                        <input type="text" placeholder="Nama Produk (Wajib)" value={productName} onChange={(e) => setProductName(e.target.value)} className="w-full bg-slate-950 border border-slate-700 text-sm rounded-lg p-3 text-white mb-4 outline-none focus:border-rose-500" />
-                        <label className="text-xs text-slate-400 flex justify-between mb-1"><span>Face Lock</span><span>{promoFaceLock}%</span></label>
-                        <input type="range" min="0" max="100" value={promoFaceLock} onChange={(e) => setPromoFaceLock(e.target.value)} className="w-full accent-rose-500" />
+                        <label className="text-[10px] font-bold text-slate-400 block mb-1 uppercase tracking-tight">Nama Produk (Wajib)</label>
+                        <input type="text" placeholder="Contoh: Skintific Serum" value={productName} onChange={(e) => setProductName(e.target.value)} className="w-full bg-slate-950 border border-slate-700 text-sm rounded-lg p-2.5 text-white mb-4 outline-none focus:border-rose-500" />
+                        
+                        <label className="text-xs font-bold text-slate-400 flex justify-between mb-2"><span>Face Lock</span><span className="text-rose-400 bg-rose-950/50 px-2 rounded">{promoFaceLock}%</span></label>
+                        <input type="range" min="0" max="100" value={promoFaceLock} onChange={(e) => setPromoFaceLock(e.target.value)} className="w-full accent-rose-500 h-1.5 bg-slate-800 rounded-lg appearance-none" />
                       </div>
                       
-                      <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800">
-                        <h2 className="text-lg font-bold text-white mb-2">2. Masukkan Naskah</h2>
-                        <textarea value={scriptInput} onChange={(e) => setScriptInput(e.target.value)} className="w-full h-48 bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-slate-300 outline-none focus:border-rose-500" />
-                        <button onClick={generateVideoStoryboard} disabled={isProcessing} className="w-full mt-4 bg-orange-600 hover:bg-orange-700 text-white font-black py-4 rounded-xl disabled:opacity-50 transition-all shadow-lg shadow-orange-900/20">
-                          {isProcessing ? 'MEMPROSES...' : 'PROSES STORYBOARD'}
+                      <div className="bg-slate-900 rounded-2xl p-6 border border-slate-800 shadow-xl">
+                        <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Captions size={18} className="text-rose-400"/> 2. Masukkan Naskah</h2>
+                        <textarea value={scriptInput} onChange={(e) => setScriptInput(e.target.value)} className="w-full h-44 bg-slate-950 border border-slate-700 p-3 rounded-lg text-xs text-slate-300 outline-none focus:border-rose-500" placeholder="Paste naskah promosi Anda di sini..." />
+                        <button onClick={generateVideoStoryboard} disabled={isProcessing} className="w-full mt-4 bg-gradient-to-r from-rose-600 to-orange-600 hover:from-rose-500 hover:to-orange-500 text-white font-black py-4 rounded-xl disabled:opacity-50 transition-all shadow-lg shadow-rose-900/30 flex items-center justify-center gap-2 active:scale-95">
+                          {isProcessing ? <><Loader2 size={18} className="animate-spin"/> MEMPROSES...</> : <><Wand2 size={18}/> BUAT STORYBOARD</>}
                         </button>
                       </div>
                     </div>
                     
-                    <div className="lg:col-span-8 bg-slate-900 rounded-2xl p-6 border border-slate-800 min-h-[500px]">
-                      <h2 className="text-lg font-bold text-white mb-4">Hasil Storyboard</h2>
+                    <div className="lg:col-span-8 bg-slate-900 rounded-2xl p-6 border border-slate-800 min-h-[500px] shadow-xl">
+                      <h2 className="text-lg font-bold text-white mb-4 flex items-center justify-between">
+                        <span className="flex items-center gap-2"><Video size={18} className="text-rose-400"/> Hasil Auto-Storyboard AI</span>
+                        {storyboardData && <span className="text-[10px] bg-emerald-900/50 text-emerald-400 px-2 py-1 rounded font-bold uppercase tracking-wider">Tersimpan di Riwayat</span>}
+                      </h2>
+                      
                       {storyboardData ? (
                         <div className="space-y-4 animate-in slide-in-from-bottom duration-500">
                           {storyboardData.scenes.map((scene, idx) => (
-                            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col gap-2">
-                              <div className="flex justify-between items-center"><span className="text-rose-400 font-bold text-sm">{scene.segment} ({scene.duration})</span><span className="bg-slate-800 px-2 py-1 text-[10px] text-orange-400 rounded">Nada: {scene.detectedTone}</span></div>
-                              <textarea readOnly value={`--VISUAL INSTRUCTIONS--\n${scene.visualPrompt}\n\n--AUDIO & LIP-SYNC SCRIPT--\n${scene.audio}`} className="w-full h-32 bg-slate-900 p-3 text-xs text-slate-300 border border-slate-800 rounded mt-2 resize-none outline-none" />
-                              <button onClick={() => handleCopySingleScene(scene, idx)} className={`self-end flex items-center gap-2 px-4 py-2 rounded-lg font-semibold text-xs transition-all border ${copiedSceneIndexes[idx] ? 'bg-green-600/20 text-green-400 border-green-900' : 'bg-slate-800 text-slate-200 border-slate-600 hover:bg-slate-700'}`}>
+                            <div key={idx} className="bg-slate-950 border border-slate-800 rounded-xl p-4 flex flex-col gap-2 relative group hover:border-slate-600 transition-colors">
+                              <div className="flex justify-between items-center">
+                                <span className="text-rose-400 font-black text-sm uppercase tracking-wider">{scene.segment} <span className="text-slate-500 font-normal ml-1">({scene.duration})</span></span>
+                                <span className="bg-slate-800 px-2 py-1 text-[10px] text-orange-400 rounded font-bold uppercase">Nada: {scene.detectedTone}</span>
+                              </div>
+                              <textarea readOnly value={`--VISUAL INSTRUCTIONS--\n${scene.visualPrompt}\n\n--AUDIO & LIP-SYNC SCRIPT--\n${scene.audio}`} className="w-full h-28 bg-slate-900/50 p-3 text-xs text-slate-300 border border-slate-800/50 rounded mt-2 resize-none outline-none font-mono" />
+                              <button onClick={() => handleCopySingleScene(scene, idx)} className={`self-end flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all border shadow-md active:scale-95 ${copiedSceneIndexes[idx] ? 'bg-emerald-600/20 text-emerald-400 border-emerald-900 shadow-none' : 'bg-slate-800 text-slate-200 border-slate-700 hover:bg-slate-700'}`}>
                                 {copiedSceneIndexes[idx] ? <Check size={14} /> : <Copy size={14} />} 
-                                {copiedSceneIndexes[idx] ? 'Tersalin!' : 'Copy Prompt Lengkap'}
+                                {copiedSceneIndexes[idx] ? 'Tersalin!' : 'Copy Prompt Visual + Audio'}
                               </button>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-50">
-                          <ListVideo size={48} className="mb-4" />
-                          <p className="text-center font-medium">Isi data dan klik proses untuk melihat hasil storyboard.</p>
+                        <div className="flex flex-col items-center justify-center h-full text-slate-500 opacity-50 pb-10">
+                          <ListVideo size={56} className="mb-4 text-slate-600" />
+                          <p className="text-center font-bold text-lg mb-1">Storyboard Kosong</p>
+                          <p className="text-center text-sm">Isi data referensi dan klik tombol proses di panel kiri.</p>
                         </div>
                       )}
                     </div>
                   </div>
                 )}
+
+                {/* ============================================================================
+                    PROJECT VAULT (RIWAYAT PROYEK)
+                ============================================================================ */}
+                <div className="mt-12 pt-8 border-t border-slate-800/50">
+                    <div className="flex items-center justify-between mb-6">
+                        <h2 className="text-xl font-black text-white flex items-center gap-2"><History className="text-sky-400"/> Riwayat Proyek Terbaru</h2>
+                        {vaultHistory.length > 0 && (
+                            <button onClick={clearVault} className="text-xs font-bold text-red-400 hover:text-red-300 flex items-center gap-1 bg-red-950/30 px-3 py-1.5 rounded-lg transition-colors"><Trash2 size={14}/> Hapus Semua</button>
+                        )}
+                    </div>
+                    
+                    {vaultHistory.length === 0 ? (
+                        <div className="bg-slate-900/50 rounded-2xl p-8 border border-slate-800 text-center text-slate-500 text-sm font-medium">Belum ada riwayat proyek. Hasil prompt Anda akan tersimpan otomatis di sini.</div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {vaultHistory.map((item) => (
+                                <div key={item.id} className="bg-slate-900 rounded-2xl p-4 border border-slate-800 hover:border-slate-600 transition-colors group cursor-pointer" onClick={() => alert("Fitur Load Project: Segera hadir! \n\n(Data Anda sudah tersimpan dengan aman di memori HP Anda).")}>
+                                    <div className="flex gap-2 mb-3">
+                                        <div className="w-16 h-16 bg-slate-950 rounded-lg border border-slate-800 overflow-hidden shrink-0 flex items-center justify-center relative">
+                                            {item.mainImg ? <img src={item.mainImg} className="w-full h-full object-cover opacity-80" /> : <ImageIcon size={20} className="text-slate-600"/>}
+                                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"><History size={16} className="text-white"/></div>
+                                        </div>
+                                        <div className="flex flex-col justify-center overflow-hidden">
+                                            <span className={`text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded w-max mb-1 ${item.type === 'promo' ? 'bg-rose-950 text-rose-400' : 'bg-indigo-950 text-indigo-400'}`}>{item.type}</span>
+                                            <span className="text-sm font-bold text-white truncate w-full">{item.title}</span>
+                                            <span className="text-[10px] text-slate-500">{item.date}</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-[11px] text-slate-400 line-clamp-2 bg-slate-950 p-2 rounded-lg border border-slate-800 font-mono leading-tight">{item.resultText}</p>
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
               </div>
             </div>
           );
