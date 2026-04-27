@@ -8,19 +8,20 @@
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react@latest/dist/umd/lucide-react.js"></script>
 </head>
 <body>
     <div id="root"></div>
 
     <script type="text/babel">
-        // ==========================================================
-        // ⚠️ INSTRUKSI PENTING SEBELUM COPAS:
-        // 1. JANGAN copy baris "import ..." dari file asli Anda.
-        // 2. Ganti tulisan "export default function App()" menjadi "function App()" saja.
-        // ==========================================================
+        // PERBAIKAN 2: Kenalkan fungsi React ke browser
+        const { useState, useRef } = React;
+        
+        // PERBAIKAN 3: Kenalkan semua ikon ke browser
+        const { Upload, Video, Image: ImageIcon, Wand2, Copy, Check, AlertCircle, Loader2, ListVideo, ShoppingBag, UserCircle, Captions, Mic, Download, Film, Sparkles, MapPin, Palette, Volume2, Fingerprint, Hash, ChevronDown } = lucide;
 
         const API_KEY = ""; // Diisi otomatis oleh sistem
+
 
 // ============================================================================
 // KONSTANTA & OPSI DROPDOWN (MODE GAMBAR & VIDEO BIASA)
