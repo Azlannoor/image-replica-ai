@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AI Prompt Replica - Azlan Noor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { background: #0f172a; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background: #1e293b; border-radius: 1rem; border: 1px solid #334155; padding: 1.25rem; }
+        .btn-primary { background: #4f46e5; transition: all 0.2s; }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-success { background: #059669; }
+        .btn-danger { background: #dc2626; }
+        .btn-warning { background: #d97706; }
+        .dropzone { border: 2px dashed #475569; background: #0f172a; border-radius: 1rem; padding: 1rem; text-align: center; cursor: pointer; transition: border 0.2s; }
+        .dropzone:hover { border-color: #818cf8; }
+        .preview-img { max-height: 150px; margin: 0 auto; border-radius: 0.75rem; object-fit: contain; }
+        select, textarea, input { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.5rem; color: #e2e8f0; font-size: 0.875rem; width: 100%; }
+        .sidebar-item { display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem 1rem; border-radius: 0.75rem; transition: all 0.2s; cursor: pointer; }
+        .sidebar-item.active { background: #4f46e5; color: white; }
+        .sidebar-item:not(.active):hover { background: #334155; }
+        .history-thumb { width: 50px; height: 50px; background: #0f172a; border-radius: 0.5rem; object-fit: cover; }
+        .fade-in { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body class="text-slate-200">
+
+<div class="flex flex-col md:flex-row min-h-screen">
+    <!-- SIDEBAR -->
+    <aside class="md:w-64 bg-slate-900 border-r border-slate-800 p-4 space-y-2 shrink-0">
+        <div class="flex items-center gap-2 px-3 py-3 mb-4 border-b border-slate-800">
+            <i class="fas fa-magic text-indigo-400 text-2xl"></i>
+            <h1 class="text-lg font-bold">AI Prompt Replica</h1>
+        </div>
+        <div id="menuGambar" class="sidebar-item active" data-view="gambar">
+            <i class="fas fa-image w-5"></i> <span>Gambar</span>
+        </div>
+        <div id="menuHistory" class="sidebar-item" data-view="history">
+            <i class="fas fa-history w-5"></i> <span>History</span>
+        </div>
+        <div id="menuPresets" class="sidebar-item" data-view="presets">
+            <i class="fas fa-bolt w-5"></i> <span>Presets</span>
+        </div>
+        <div id="menuSettings" class="sidebar-item" data-view="settings">
+            <i class="fas fa-cog w-5"></i> <span>Settings</span>
+        </div>
+        <div class="sidebar-item opacity-50" data-view="video">
+            <i class="fas fa-video w-5"></i> <span>Video (Soon)</span>
+        </div>
+        <div class="sidebar-item opacity-50" data-view="promo">
+            <i class="fas fa-bullhorn w-5"></i> <span>Promo (Soon)</span>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 p-4 md:p-6 max-w-6xl mx-auto w-full" id="mainContent">
+        <!-- VIEW GAMBAR (default) -->
+        <div id="viewGambar" class="space-y-6 fade-in">
+            <div class="grid md:grid-cols-2 gap-6">
+                <!-- KIRI: Upload & Analisis -->
+                <div class="card space-y-4">
+                    <h2 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-image text-indigo-400"></i> Referensi Gambar</h2>
+                    <div id="dropzoneBase" class="dropzone">
+                        <input type="file" id="baseImageInput" accept="image/*" class="hidden">
+                        <div id="basePreviewArea"><i class="fas fa-cloud-upload-alt text-3xl text-slate-500 mb-2 block"></i><span class="text-sm">Klik unggah gambar utama</span></div>
+                        <img id="basePreview" class="preview-img hidden">
+                    </div>
+                    <div id="dropzoneFace" class="dropzone border-dashed">
+                        <input type="file" id="faceImageInput" accept="image/*" class="hidden">
+                        <div id="facePreviewArea"><i class="fas fa-user-plus"></i> <span class="text-sm">+ Tambah wajah (opsional, face swap)</span></div>
+                        <img id="facePreview" class="preview-img hidden mt-2">
+                    </div>
+                    <button id="analyzeBtn" class="btn-primary w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 disabled:opacity-50" disabled><i class="fas fa-robot"></i> Analisis Gambar</button>
+                    <div id="analyzeResult" class="hidden bg-slate-950 p-3 rounded-lg border border-slate-700 text-xs"><span class="font-bold text-indigo-400">Deskripsi AI:</span><p id="basePromptText" class="mt-1 break-words"></p></div>
+                </div>
+                <!-- KANAN: Modifier & Prompt -->
+                <div class="card space-y-4">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-sliders-h text-indigo-400"></i> Gaya & Modifier</h2>
+                        <label class="flex items-center gap-2 text-sm bg-slate-800 px-3 py-1.5 rounded-lg cursor-pointer"><input type="checkbox" id="replicaModeCheckbox"> <span>Mode Replica Ketat</span></label>
+                    </div>
+                    <div id="modifierContainer" class="grid grid-cols-2 gap-3 text-sm"></div>
+                    <textarea id="finalPrompt" readonly class="w-full h-40 bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono resize-none" placeholder="Prompt akan muncul di sini dan otomatis tersalin..."></textarea>
+                    <button id="generateBtn" class="btn-success w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2"><i class="fas fa-copy"></i> Buat & Salin Prompt</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW HISTORY -->
+        <div id="viewHistory" class="hidden space-y-4 fade-in">
+            <div class="card"><h2 class="text-xl font-bold mb-4"><i class="fas fa-history"></i> Riwayat Prompt</h2><div id="historyList" class="space-y-3"></div></div>
+        </div>
+
+        <!-- VIEW PRESETS -->
+        <div id="viewPresets" class="hidden space-y-4 fade-in">
+            <div class="card"><h2 class="text-xl font-bold mb-4"><i class="fas fa-bolt"></i> Preset Cepat</h2><div id="presetsList" class="grid grid-cols-1 md:grid-cols-2 gap-3"></div><button id="saveCurrentPresetBtn" class="mt-4 bg-indigo-600 w-full py-2 rounded-lg"><i class="fas fa-save"></i> Simpan preset dari modifier saat ini</button></div>
+        </div>
+
+        <!-- VIEW SETTINGS -->
+        <div id="viewSettings" class="hidden space-y-4 fade-in">
+            <div class="card"><h2 class="text-xl font-bold mb-4"><i class="fas fa-cog"></i> Pengaturan</h2>
+                <label class="block mb-2 font-bold">Gemini API Key</label>
+                <input type="password" id="apiKeyInput" class="mb-4" placeholder="Masukkan API Key">
+                <button id="saveApiKeyBtn" class="btn-primary px-4 py-2 rounded-lg">Simpan Key</button>
+                <hr class="my-4 border-slate-700">
+                <button id="clearAllHistoryBtn" class="btn-danger px-4 py-2 rounded-lg"><i class="fas fa-trash"></i> Hapus Semua Riwayat</button>
+                <button id="clearAllPresetsBtn" class="btn-warning ml-2 px-4 py-2 rounded-lg"><i class="fas fa-eraser"></i> Reset Preset (kembali ke 3 bawaan)</button>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="notification" class="fixed bottom-4 right-4 bg-slate-800 border-l-4 border-emerald-500 p-3 rounded-lg shadow-lg hidden transition-all z-50"></div>
+
+<script>
+    // ==================== KONFIGURASI ====================
+    const STORAGE_KEYS = {
+        API_KEY: 'gemini_api_key_azlan',
+        HISTORY: 'prompt_history_v2',
+        PRESETS: 'user_presets'
+    };
+    const DEFAULT_PRESETS = [
+        { name: "Natural Portrait", modifiers: { gender: "1girl, female", artStyle: "Photorealistic", lighting: "Natural lighting", expression: "Neutral", shotType: "Close-up", attire: "Casual wear", background: "", colorTone: "", pose: "Standing", cameraAngle: "Eye Level", bodyShape: "Auto" } },
+        { name: "Studio Clean", modifiers: { background: "Empty studio (White)", lighting: "Studio lighting", artStyle: "Photorealistic", pose: "Standing", shotType: "Full Body", gender: "", expression: "", attire: "", colorTone: "", cameraAngle: "", bodyShape: "Auto" } },
+        { name: "Fantasy Hero", modifiers: { artStyle: "Oil painting", background: "Fantasy forest", lighting: "Cinematic lighting", pose: "Dynamic pose", gender: "1boy, male", attire: "Fantasy armor", expression: "Serious", shotType: "Medium Shot", cameraAngle: "Low Angle", colorTone: "Warm tone", bodyShape: "Auto" } }
+    ];
+    let userPresets = [];
+
+    // Data modifier
+    const modifierConfig = {
+        gender: { label: 'Gender', options: ['', '1boy, male', '1girl, female', 'androgynous'] },
+        attire: { label: 'Pakaian', options: ['', 'Casual wear', 'Formal suit', 'Cyberpunk techwear', 'Fantasy armor', 'Traditional'] },
+        background: { label: 'Latar', options: ['', 'Empty studio (White)', 'Cyberpunk city', 'Fantasy forest', 'Beach', 'Mountains'] },
+        artStyle: { label: 'Gaya Seni', options: ['', 'Photorealistic', 'Anime / Manga', '3D Render', 'Oil painting', 'Cyberpunk'] },
+        lighting: { label: 'Pencahayaan', options: ['', 'Natural lighting', 'Studio lighting', 'Cinematic lighting', 'Neon lighting', 'Golden hour'] },
+        colorTone: { label: 'Tone Warna', options: ['', 'Warm tone', 'Cool tone', 'Neutral', 'High contrast'] },
+        expression: { label: 'Ekspresi', options: ['', 'Neutral', 'Smiling', 'Sad', 'Angry', 'Serious'] },
+        pose: { label: 'Pose', options: ['', 'Standing', 'Sitting', 'Laying down', 'Dynamic pose', 'Exact Replica (Kunci Pose Asli)'] },
+        shotType: { label: 'Shot', options: ['', 'Close-up', 'Medium Shot', 'Full Body', 'Wide shot'] },
+        cameraAngle: { label: 'Sudut Kamera', options: ['', 'Eye Level', 'High Angle', 'Low Angle'] },
+        bodyShape: { label: 'Bentuk Tubuh', options: ['Auto', 'Exact Replica (Kunci Proporsi Asli)'] }
+    };
+
+    // State
+    let baseImgB64 = null, baseImgMime = null, faceImgB64 = null, faceImgMime = null;
+    let basePrompt = ''; // hasil analisis AI
+    let currentModifiers = {};
+    let apiKey = localStorage.getItem(STORAGE_KEYS.API_KEY) || '';
+    let history = [];
+
+    // DOM elements
+    const baseInput = document.getElementById('baseImageInput');
+    const faceInput = document.getElementById('faceImageInput');
+    const basePreview = document.getElementById('basePreview');
+    const basePreviewArea = document.getElementById('basePreviewArea');
+    const facePreview = document.getElementById('facePreview');
+    const facePreviewArea = document.getElementById('facePreviewArea');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const analyzeResultDiv = document.getElementById('analyzeResult');
+    const basePromptText = document.getElementById('basePromptText');
+    const finalPromptText = document.getElementById('finalPrompt');
+    const replicaModeCheckbox = document.getElementById('replicaModeCheckbox');
+    const modifierContainer = document.getElementById('modifierContainer');
+    const notification = document.getElementById('notification');
+    const apiKeyInput = document.getElementById('apiKeyInput');
+    const saveApiKeyBtn = document.getElementById('saveApiKeyBtn');
+    const clearAllHistoryBtn = document.getElementById('clearAllHistoryBtn');
+    const clearAllPresetsBtn = document.getElementById('clearAllPresetsBtn');
+    const saveCurrentPresetBtn = document.getElementById('saveCurrentPresetBtn');
+    const historyListDiv = document.getElementById('historyList');
+    const presetsListDiv = document.getElementById('presetsList');
+    
+    // Helper notif
+    function showNotif(msg, isError = false) {
+        notification.textContent = msg;
+        notification.className = `fixed bottom-4 right-4 bg-slate-800 border-l-4 ${isError ? 'border-red-500' : 'border-emerald-500'} p-3 rounded-lg shadow-lg transition-all z-50`;
+        notification.classList.remove('hidden');
+        setTimeout(() => notification.classList.add('hidden'), 3000);
+    }
+
+    // Load history dari localStorage
+    function loadHistory() {
+        const stored = localStorage.getItem(STORAGE_KEYS.HISTORY);
+        if (stored) history = JSON.parse(stored);
+        else history = [];
+        renderHistory();
+    }
+    function saveHistory() {
+        localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(history.slice(0, 15)));
+        renderHistory();
+    }
+    function addToHistory(promptText, thumbnailBase64, modifiersUsed, isReplica) {
+        const newItem = {
+            id: Date.now(),
+            date: new Date().toLocaleString(),
+            prompt: promptText,
+            thumbnail: thumbnailBase64 || null,
+            modifiers: modifiersUsed,
+            replicaMode: isReplica
+        };
+        history.unshift(newItem);
+        if (history.length > 15) history.pop();
+        saveHistory();
+        showNotif('Prompt tersimpan di riwayat');
+    }
+    function renderHistory() {
+        if (!historyListDiv) return;
+        if (history.length === 0) {
+            historyListDiv.innerHTML = '<div class="text-slate-400 text-center py-8">Belum ada riwayat prompt.</div>';
+            return;
+        }
+        historyListDiv.innerHTML = history.map(item => `
+            <div class="bg-slate-800 rounded-xl p-3 flex gap-3 items-center">
+                <img src="${item.thumbnail || 'data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2750%27 height=%2750%27 viewBox=%270 0 50 50%27%3E%3Crect width=%2750%27 height=%2750%27 fill=%27%23334155%27/%3E%3Ctext x=%2750%25%27 y=%2750%25%27 text-anchor=%27middle%27 dy=%27.3em%27 fill=%27%2394a3b8%27 font-size=%2710%27%3Eno img%3C/text%3E%3C/svg%3E'}" class="history-thumb">
+                <div class="flex-1"><div class="font-bold text-sm">${item.date}</div><div class="text-xs text-slate-400 truncate">${item.prompt.substring(0, 80)}...</div></div>
+                <button class="load-history-btn text-indigo-400 hover:text-indigo-300 p-2" data-id="${item.id}"><i class="fas fa-undo-alt"></i></button>
+                <button class="delete-history-btn text-red-400 hover:text-red-300 p-2" data-id="${item.id}"><i class="fas fa-trash-alt"></i></button>
+            </div>
+        `).join('');
+        document.querySelectorAll('.load-history-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { const id = parseInt(btn.dataset.id); loadHistoryItem(id); });
+        });
+        document.querySelectorAll('.delete-history-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => { const id = parseInt(btn.dataset.id); deleteHistoryItem(id); });
+        });
+    }
+    function deleteHistoryItem(id) {
+        history = history.filter(item => item.id !== id);
+        saveHistory();
+        showNotif('Riwayat dihapus');
+    }
+    function loadHistoryItem(id) {
+        const item = history.find(h => h.id === id);
+        if (!item) return;
+        // restore modifiers
+        if (item.modifiers) {
+            for (const [key, val] of Object.entries(item.modifiers)) {
+                const select = document.querySelector(`.modifier-select[data-key="${key}"]`);
+                if (select) select.value = val;
+                currentModifiers[key] = val;
+            }
+        }
+        if (item.replicaMode !== undefined) replicaModeCheckbox.checked = item.replicaMode;
+        // restore basePrompt? Optional, tapi lebih baik reload analisis? Kita simpan basePrompt juga di item nanti? Untuk sederhana, kita hanya restore prompt text dan copy
+        finalPromptText.value = item.prompt;
+        // jika ada thumbnail, kita bisa tampilkan? Tapi tidak restore gambar ke dropzone (karena kompleks). Biarkan user load manual.
+        showNotif('Preset & modifier di-load. Silakan generate ulang atau gunakan prompt yang sudah ada.');
+        // switch ke view gambar
+        setActiveView('gambar');
+    }
+
+    // Presets
+    function loadPresets() {
+        const stored = localStorage.getItem(STORAGE_KEYS.PRESETS);
+        if (stored) userPresets = JSON.parse(stored);
+        else userPresets = [...DEFAULT_PRESETS];
+        renderPresets();
+    }
+    function savePresets() {
+        localStorage.setItem(STORAGE_KEYS.PRESETS, JSON.stringify(userPresets));
+        renderPresets();
+    }
+    function renderPresets() {
+        if (!presetsListDiv) return;
+        presetsListDiv.innerHTML = userPresets.map((preset, idx) => `
+            <div class="bg-slate-800 rounded-xl p-3 flex justify-between items-center">
+                <span class="font-bold">${preset.name}</span>
+                <div><button class="apply-preset-btn text-indigo-400 px-2" data-idx="${idx}"><i class="fas fa-play"></i> Terapkan</button>
+                ${idx >= 3 ? `<button class="delete-preset-btn text-red-400 px-2" data-idx="${idx}"><i class="fas fa-trash"></i></button>` : ''}</div>
+            </div>
+        `).join('');
+        document.querySelectorAll('.apply-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => { const idx = parseInt(btn.dataset.idx); applyPreset(idx); });
+        });
+        document.querySelectorAll('.delete-preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => { const idx = parseInt(btn.dataset.idx); deletePreset(idx); });
+        });
+    }
+    function applyPreset(idx) {
+        const preset = userPresets[idx];
+        for (const [key, val] of Object.entries(preset.modifiers)) {
+            const select = document.querySelector(`.modifier-select[data-key="${key}"]`);
+            if (select) select.value = val;
+            currentModifiers[key] = val;
+        }
+        showNotif(`Preset "${preset.name}" diterapkan`);
+        updatePreviewPrompt();
+    }
+    function deletePreset(idx) {
+        if (idx < 3) { showNotif('Preset bawaan tidak bisa dihapus', true); return; }
+        userPresets.splice(idx, 1);
+        savePresets();
+    }
+    function saveCurrentPreset() {
+        const name = prompt('Nama preset baru:');
+        if (!name) return;
+        // ambil current modifiers
+        const modifiers = {};
+        document.querySelectorAll('.modifier-select').forEach(sel => {
+            modifiers[sel.dataset.key] = sel.value;
+        });
+        userPresets.push({ name, modifiers });
+        savePresets();
+        showNotif(`Preset "${name}" tersimpan`);
+    }
+
+    // Update prompt preview berdasarkan modifier + basePrompt + replica mode
+    function updatePreviewPrompt() {
+        const modifiers = {};
+        document.querySelectorAll('.modifier-select').forEach(sel => {
+            modifiers[sel.dataset.key] = sel.value;
+        });
+        let promptParts = ["(masterpiece, best quality, ultra-detailed, 8k, highres)"];
+        if (modifiers.artStyle) promptParts.push(modifiers.artStyle);
+        if (modifiers.shotType) promptParts.push(modifiers.shotType);
+        if (modifiers.cameraAngle) promptParts.push(modifiers.cameraAngle);
+        if (basePrompt) promptParts.push(basePrompt);
+        if (modifiers.gender) promptParts.push(modifiers.gender);
+        if (modifiers.expression) promptParts.push(`expression: ${modifiers.expression}`);
+        if (modifiers.attire) promptParts.push(`outfit: ${modifiers.attire}`);
+        if (modifiers.background) promptParts.push(`background: ${modifiers.background}`);
+        if (modifiers.lighting) promptParts.push(modifiers.lighting);
+        if (modifiers.colorTone) promptParts.push(modifiers.colorTone);
+        if (modifiers.pose && modifiers.pose !== 'Exact Replica (Kunci Pose Asli)') promptParts.push(`pose: ${modifiers.pose}`);
+        if (modifiers.bodyShape === 'Exact Replica (Kunci Proporsi Asli)') promptParts.push("maintain EXACT body proportions as reference");
+        
+        if (replicaModeCheckbox.checked && basePrompt) {
+            promptParts.push("CRITICAL: EXACT REPLICATION of every visual detail from the reference image: face structure, body proportions, pose, background, lighting, color tone. Do not alter any attribute.");
+        }
+        
+        const final = promptParts.filter(Boolean).join(', ');
+        finalPromptText.value = final;
+        return final;
+    }
+
+    // Analisis gambar dengan Gemini (model gemini-2.0-flash)
+    async function callGemini(payload) {
+        const model = 'gemini-2.0-flash'; // berdasarkan ketersediaan
+        const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.error) throw new Error(data.error.message);
+        return data;
+    }
+
+    async function analyzeImage() {
+        if (!baseImgB64) { showNotif('Unggah gambar utama dulu', true); return; }
+        if (!apiKey) { showNotif('API Key belum diatur. Buka Settings', true); return; }
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menganalisis...';
+        let instruction = "Describe this image in detail: physical appearance, clothing, background, lighting, pose, face features, body shape. Output in English, comma-separated keywords. No sentences.";
+        if (replicaModeCheckbox.checked) {
+            instruction = "Extract EVERY visual detail for exact replication: precise facial features (eye shape, nose, lips, jawline), body proportions (shoulder width, waist, limb length), exact pose (arm and leg angles, head tilt), background objects and colors, lighting direction and intensity, color temperature. Output as detailed comma-separated keywords.";
+        }
+        let parts = [];
+        if (faceImgB64) {
+            parts = [
+                { text: "First image (body/environment):" },
+                { inlineData: { mimeType: baseImgMime || 'image/jpeg', data: baseImgB64 } },
+                { text: "Second image (face to swap):" },
+                { inlineData: { mimeType: faceImgMime || 'image/jpeg', data: faceImgB64 } },
+                { text: instruction + " Combine body from first image and face from second image." }
+            ];
+        } else {
+            parts = [
+                { inlineData: { mimeType: baseImgMime || 'image/jpeg', data: baseImgB64 } },
+                { text: instruction }
+            ];
+        }
+        try {
+            const data = await callGemini({ contents: [{ role: "user", parts }] });
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            basePrompt = text.trim();
+            basePromptText.innerText = basePrompt;
+            analyzeResultDiv.classList.remove('hidden');
+            showNotif('Analisis berhasil!');
+            updatePreviewPrompt();
+        } catch (err) {
+            showNotif('Error: ' + err.message, true);
+            console.error(err);
+        } finally {
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<i class="fas fa-robot"></i> Analisis Gambar';
+        }
+    }
+
+    // Generate final prompt dan simpan ke history (dengan thumbnail)
+    function generateAndCopy() {
+        const finalPrompt = updatePreviewPrompt();
+        if (!finalPrompt) { showNotif('Prompt kosong', true); return; }
+        navigator.clipboard.writeText(finalPrompt).then(() => showNotif('✅ Prompt tersalin ke clipboard!')).catch(() => showNotif('Gagal copy', true));
+        // Simpan ke history: ambil thumbnail dari basePreview jika ada
+        let thumb = null;
+        if (basePreview.src && basePreview.src.startsWith('data:image')) thumb = basePreview.src;
+        else if (baseImgB64) thumb = `data:${baseImgMime || 'image/jpeg'};base64,${baseImgB64}`;
+        const modifiers = {};
+        document.querySelectorAll('.modifier-select').forEach(sel => { modifiers[sel.dataset.key] = sel.value; });
+        addToHistory(finalPrompt, thumb, modifiers, replicaModeCheckbox.checked);
+    }
+
+    // Upload handlers
+    function handleImageUpload(file, setB64, setMime, previewImg, previewArea) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result.split(',')[1];
+            setB64(base64);
+            setMime(file.type);
+            previewImg.src = e.target.result;
+            previewImg.classList.remove('hidden');
+            previewArea.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+    baseInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleImageUpload(e.target.files[0], v => baseImgB64=v, v=>baseImgMime=v, basePreview, basePreviewArea);
+    });
+    faceInput.addEventListener('change', (e) => {
+        if (e.target.files[0]) handleImageUpload(e.target.files[0], v=>faceImgB64=v, v=>faceImgMime=v, facePreview, facePreviewArea);
+    });
+    document.getElementById('dropzoneBase').addEventListener('click', () => baseInput.click());
+    document.getElementById('dropzoneFace').addEventListener('click', () => faceInput.click());
+
+    // Event listeners
+    analyzeBtn.addEventListener('click', analyzeImage);
+    generateBtn.addEventListener('click', generateAndCopy);
+    replicaModeCheckbox.addEventListener('change', () => updatePreviewPrompt());
+    document.querySelectorAll('.modifier-select').forEach(sel => sel.addEventListener('change', () => updatePreviewPrompt()));
+
+    // Settings
+    saveApiKeyBtn.addEventListener('click', () => {
+        const newKey = apiKeyInput.value.trim();
+        if (newKey) {
+            apiKey = newKey;
+            localStorage.setItem(STORAGE_KEYS.API_KEY, apiKey);
+            showNotif('API Key tersimpan');
+        } else {
+            localStorage.removeItem(STORAGE_KEYS.API_KEY);
+            apiKey = '';
+            showNotif('API Key dihapus', true);
+        }
+        apiKeyInput.value = apiKey;
+    });
+    clearAllHistoryBtn.addEventListener('click', () => {
+        if (confirm('Hapus semua riwayat?')) { history = []; saveHistory(); showNotif('Riwayat dihapus'); }
+    });
+    clearAllPresetsBtn.addEventListener('click', () => {
+        if (confirm('Reset preset ke 3 bawaan? Preset tambahan akan hilang.')) { userPresets = [...DEFAULT_PRESETS]; savePresets(); showNotif('Preset direset'); }
+    });
+    saveCurrentPresetBtn.addEventListener('click', saveCurrentPreset);
+    
+    // UI Switching
+    function setActiveView(viewId) {
+        document.querySelectorAll('#viewGambar, #viewHistory, #viewPresets, #viewSettings').forEach(v => v.classList.add('hidden'));
+        document.getElementById(`view${viewId.charAt(0).toUpperCase() + viewId.slice(1)}`).classList.remove('hidden');
+        document.querySelectorAll('.sidebar-item').forEach(item => item.classList.remove('active'));
+        document.getElementById(`menu${viewId.charAt(0).toUpperCase() + viewId.slice(1)}`).classList.add('active');
+        if (viewId === 'history') renderHistory();
+        if (viewId === 'presets') renderPresets();
+    }
+    document.getElementById('menuGambar').addEventListener('click', () => setActiveView('gambar'));
+    document.getElementById('menuHistory').addEventListener('click', () => setActiveView('history'));
+    document.getElementById('menuPresets').addEventListener('click', () => setActiveView('presets'));
+    document.getElementById('menuSettings').addEventListener('click', () => setActiveView('settings'));
+    
+    // Inisialisasi dropdown modifier
+    function buildModifiers() {
+        let html = '';
+        for (const [key, config] of Object.entries(modifierConfig)) {
+            html += `<div><label class="text-[11px] font-bold text-slate-400">${config.label}</label>
+            <select data-key="${key}" class="modifier-select w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs">
+                ${config.options.map(opt => `<option value="${opt}">${opt || '-- Default --'}</option>`).join('')}
+            </select></div>`;
+        }
+        modifierContainer.innerHTML = html;
+        document.querySelectorAll('.modifier-select').forEach(sel => sel.addEventListener('change', () => updatePreviewPrompt()));
+    }
+    buildModifiers();
+    loadHistory();
+    loadPresets();
+    apiKeyInput.value = apiKey;
+    updatePreviewPrompt();
+</script>
+</body>
+</html>
