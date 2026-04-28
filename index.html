@@ -1,60 +1,326 @@
-
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Azlan Noor - AI Creative Tools</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AI Image Replica - Azlan Noor</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <style>
+        body { background: #0f172a; font-family: system-ui, -apple-system, sans-serif; }
+        .card { background: #1e293b; border-radius: 1rem; border: 1px solid #334155; padding: 1.25rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        .btn-primary { background: #4f46e5; transition: all 0.2s; }
+        .btn-primary:active { transform: scale(0.97); }
+        .btn-success { background: #059669; }
+        .dropzone { border: 2px dashed #475569; background: #0f172a; border-radius: 1rem; padding: 1rem; text-align: center; cursor: pointer; transition: border 0.2s; }
+        .dropzone:hover { border-color: #818cf8; }
+        img.preview { max-height: 180px; margin: 0 auto; border-radius: 0.75rem; object-fit: contain; }
+        select, textarea { background: #0f172a; border: 1px solid #334155; border-radius: 0.5rem; padding: 0.5rem; color: #e2e8f0; font-size: 0.875rem; width: 100%; }
+        .fade-in { animation: fadeIn 0.2s ease; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
 </head>
-<body class="bg-slate-950 text-slate-200 min-h-screen font-sans">
+<body class="text-slate-200 p-4">
 
-    <header class="py-12 text-center">
-        <div class="inline-block p-3 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 mb-4 shadow-lg shadow-indigo-500/20">
-            <i class="fas fa-microchip text-3xl text-white"></i>
+<div class="max-w-6xl mx-auto">
+    <!-- HEADER -->
+    <div class="flex justify-between items-center mb-6 bg-slate-800 p-4 rounded-2xl border border-slate-700">
+        <div class="flex items-center gap-3">
+            <i class="fas fa-magic text-indigo-400 text-2xl"></i>
+            <h1 class="text-xl font-bold">AI Image Replica <span class="text-xs bg-indigo-600 px-2 py-0.5 rounded-full">Pro</span></h1>
         </div>
-        <h1 class="text-4xl font-black text-white tracking-tight">AZLAN NOOR AI</h1>
-        <p class="text-slate-400 mt-2">Pusat Alat Kreatif & Riset AI Masa Depan</p>
-    </header>
+        <button id="apiKeyBtn" class="bg-slate-700 hover:bg-slate-600 p-2 rounded-lg"><i class="fas fa-key"></i> <span id="apiStatus" class="text-sm ml-1 hidden md:inline">Belum ada key</span></button>
+    </div>
 
-    <main class="max-w-4xl mx-auto px-6 pb-20">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+    <div class="grid md:grid-cols-2 gap-6">
+        <!-- KOLOM KIRI: Upload -->
+        <div class="card space-y-4">
+            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-image text-indigo-400"></i> Referensi Gambar</h2>
             
-            <a href="/image-replica" class="group bg-slate-900 p-8 rounded-3xl border border-slate-800 hover:border-indigo-500/50 transition-all hover:shadow-2xl hover:shadow-indigo-500/10 relative overflow-hidden">
-                <div class="absolute -right-4 -top-4 text-indigo-500/10 text-8xl group-hover:scale-110 transition-transform">
-                    <i class="fas fa-wand-magic-sparkles"></i>
+            <div id="dropzoneBase" class="dropzone">
+                <input type="file" id="baseImageInput" accept="image/*" class="hidden">
+                <div id="basePreviewArea">
+                    <i class="fas fa-cloud-upload-alt text-3xl text-slate-500 mb-2 block"></i>
+                    <span class="text-sm">Klik untuk unggah gambar utama</span>
                 </div>
-                <div class="bg-indigo-500/10 w-14 h-14 rounded-2xl flex items-center justify-center text-indigo-500 mb-6 group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                    <i class="fas fa-camera-retro text-2xl"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-white mb-2">Image Replica AI</h2>
-                <p class="text-slate-400">Peniru prompt gambar & video dengan fitur <i>Face Lock</i> dan <i>Pose Lock</i> yang presisi.</p>
-                <div class="mt-6 flex items-center text-indigo-400 font-bold text-sm">
-                    Gunakan Tool <i class="fas fa-arrow-right ml-2 group-hover:translate-x-2 transition-transform"></i>
-                </div>
-            </a>
+                <img id="basePreview" class="preview hidden">
+            </div>
 
-            <a href="/remove-watermark" class="group bg-slate-900 p-8 rounded-3xl border border-slate-800 hover:border-rose-500/50 transition-all hover:shadow-2xl hover:shadow-rose-500/10 relative overflow-hidden">
-                <div class="absolute -right-4 -top-4 text-rose-500/10 text-8xl group-hover:scale-110 transition-transform">
-                    <i class="fas fa-eraser"></i>
+            <div id="dropzoneFace" class="dropzone border-dashed">
+                <input type="file" id="faceImageInput" accept="image/*" class="hidden">
+                <div id="facePreviewArea">
+                    <i class="fas fa-user-plus"></i> <span class="text-sm">+ Tambah gambar wajah (opsional, untuk face swap)</span>
                 </div>
-                <div class="bg-rose-500/10 w-14 h-14 rounded-2xl flex items-center justify-center text-rose-500 mb-6 group-hover:bg-rose-500 group-hover:text-white transition-colors">
-                    <i class="fas fa-image text-2xl"></i>
-                </div>
-                <h2 class="text-2xl font-bold text-white mb-2">AI Watermark Remover</h2>
-                <p class="text-slate-400">Hapus watermark dan objek mengganggu pada gambar menggunakan teknologi <i>Inpainting</i>.</p>
-                <div class="mt-6 flex items-center text-rose-400 font-bold text-sm">
-                    Gunakan Tool <i class="fas fa-arrow-right ml-2 group-hover:translate-x-2 transition-transform"></i>
-                </div>
-            </a>
+                <img id="facePreview" class="preview hidden mt-2">
+            </div>
 
+            <button id="analyzeBtn" class="btn-primary w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2 disabled:opacity-50" disabled>
+                <i class="fas fa-robot"></i> Analisis Gambar
+            </button>
+
+            <div id="analyzeResult" class="bg-slate-950 p-3 rounded-lg border border-slate-700 text-xs hidden">
+                <span class="font-bold text-indigo-400">Deskripsi AI:</span>
+                <p id="basePromptText" class="mt-1 break-words"></p>
+            </div>
         </div>
-    </main>
 
-    <footer class="text-center py-8 border-t border-slate-900">
-        <p class="text-slate-500 text-sm">© 2026 Azlan Noor. All Rights Reserved.</p>
-    </footer>
+        <!-- KOLOM KANAN: Modifier -->
+        <div class="card space-y-4">
+            <h2 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-sliders-h text-indigo-400"></i> Gaya & Modifier</h2>
+            <div class="grid grid-cols-2 gap-3 text-sm" id="modifierContainer">
+                <!-- Akan diisi JS -->
+            </div>
+            <button id="generateBtn" class="btn-success w-full py-3 rounded-xl font-bold flex justify-center items-center gap-2">
+                <i class="fas fa-copy"></i> Buat & Salin Prompt
+            </button>
+            <textarea id="finalPrompt" readonly class="w-full h-32 bg-slate-950 border border-slate-700 rounded-lg p-3 text-xs font-mono resize-none" placeholder="Prompt akan muncul di sini dan otomatis tersalin..."></textarea>
+        </div>
+    </div>
 
+    <div id="notification" class="fixed bottom-4 right-4 bg-slate-800 border-l-4 border-emerald-500 p-3 rounded-lg shadow-lg hidden transition-all"></div>
+</div>
+
+<script>
+    // ==================== DATA MODIFIER ====================
+    const modifierConfig = {
+        gender: { label: 'Gender', options: ['', '1boy, male', '1girl, female', 'androgynous'] },
+        attire: { label: 'Pakaian', options: ['', 'Casual wear', 'Formal suit', 'Cyberpunk techwear', 'Fantasy armor', 'Traditional'] },
+        background: { label: 'Latar', options: ['', 'Empty studio (White)', 'Cyberpunk city', 'Fantasy forest', 'Beach', 'Mountains'] },
+        artStyle: { label: 'Gaya Seni', options: ['', 'Photorealistic', 'Anime / Manga', '3D Render', 'Oil painting', 'Cyberpunk'] },
+        lighting: { label: 'Pencahayaan', options: ['', 'Natural lighting', 'Studio lighting', 'Cinematic lighting', 'Neon lighting', 'Golden hour'] },
+        colorTone: { label: 'Tone Warna', options: ['', 'Warm tone', 'Cool tone', 'Neutral', 'High contrast'] },
+        expression: { label: 'Ekspresi', options: ['', 'Neutral', 'Smiling', 'Sad', 'Angry', 'Serious'] },
+        pose: { label: 'Pose', options: ['', 'Standing', 'Sitting', 'Laying down', 'Dynamic pose', 'Exact Replica (Kunci Pose Asli)'] },
+        shotType: { label: 'Shot', options: ['', 'Close-up', 'Medium Shot', 'Full Body', 'Wide shot'] },
+        cameraAngle: { label: 'Sudut Kamera', options: ['', 'Eye Level', 'High Angle', 'Low Angle'] },
+        bodyShape: { label: 'Bentuk Tubuh', options: ['Auto', 'Exact Replica (Kunci Proporsi Asli)'] }
+    };
+
+    // State
+    let baseImgB64 = null;
+    let baseImgMime = null;
+    let faceImgB64 = null;
+    let faceImgMime = null;
+    let basePrompt = '';
+    let apiKey = localStorage.getItem('gemini_api_key_azlan') || '';
+
+    // DOM elements
+    const baseInput = document.getElementById('baseImageInput');
+    const faceInput = document.getElementById('faceImageInput');
+    const basePreview = document.getElementById('basePreview');
+    const basePreviewArea = document.getElementById('basePreviewArea');
+    const facePreview = document.getElementById('facePreview');
+    const facePreviewArea = document.getElementById('facePreviewArea');
+    const analyzeBtn = document.getElementById('analyzeBtn');
+    const generateBtn = document.getElementById('generateBtn');
+    const analyzeResultDiv = document.getElementById('analyzeResult');
+    const basePromptText = document.getElementById('basePromptText');
+    const finalPromptText = document.getElementById('finalPrompt');
+    const notification = document.getElementById('notification');
+    const apiStatusSpan = document.getElementById('apiStatus');
+    const modifierContainer = document.getElementById('modifierContainer');
+
+    // Helper notifikasi
+    function showNotif(msg, isError = false) {
+        notification.textContent = msg;
+        notification.className = `fixed bottom-4 right-4 bg-slate-800 border-l-4 ${isError ? 'border-red-500' : 'border-emerald-500'} p-3 rounded-lg shadow-lg transition-all`;
+        notification.classList.remove('hidden');
+        setTimeout(() => notification.classList.add('hidden'), 3000);
+    }
+
+    // Update status API Key di UI
+    function updateApiStatus() {
+        if (apiKey) {
+            apiStatusSpan.textContent = 'Key aktif';
+            apiStatusSpan.className = 'text-green-400 text-sm ml-1 hidden md:inline';
+        } else {
+            apiStatusSpan.textContent = 'Belum ada key';
+            apiStatusSpan.className = 'text-red-400 text-sm ml-1 hidden md:inline';
+        }
+    }
+
+    // Modal API Key (sederhana, pakai prompt bawaan browser)
+    function promptApiKey() {
+        let key = prompt('Masukkan Gemini API Key Anda (dapatkan dari https://aistudio.google.com/):', apiKey);
+        if (key !== null) {
+            if (key.trim()) {
+                apiKey = key.trim();
+                localStorage.setItem('gemini_api_key_azlan', apiKey);
+                showNotif('API Key tersimpan');
+            } else {
+                apiKey = '';
+                localStorage.removeItem('gemini_api_key_azlan');
+                showNotif('API Key dihapus', true);
+            }
+            updateApiStatus();
+            checkCanAnalyze();
+        }
+    }
+
+    // Cek apakah tombol analisis bisa diaktifkan
+    function checkCanAnalyze() {
+        analyzeBtn.disabled = !baseImgB64 || !apiKey;
+        if (!baseImgB64) analyzeBtn.title = 'Unggah gambar utama dulu';
+        else if (!apiKey) analyzeBtn.title = 'Masukkan API Key';
+        else analyzeBtn.title = '';
+    }
+
+    // Handle upload gambar
+    function handleImageUpload(file, setB64, setMime, previewImg, previewArea) {
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const base64 = e.target.result.split(',')[1];
+            setB64(base64);
+            setMime(file.type);
+            previewImg.src = e.target.result;
+            previewImg.classList.remove('hidden');
+            previewArea.classList.add('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    baseInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleImageUpload(file, 
+                (v) => { baseImgB64 = v; checkCanAnalyze(); },
+                (v) => { baseImgMime = v; },
+                basePreview, basePreviewArea
+            );
+        }
+    });
+    faceInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            handleImageUpload(file,
+                (v) => { faceImgB64 = v; },
+                (v) => { faceImgMime = v; },
+                facePreview, facePreviewArea
+            );
+        }
+    });
+
+    document.getElementById('dropzoneBase').addEventListener('click', () => baseInput.click());
+    document.getElementById('dropzoneFace').addEventListener('click', () => faceInput.click());
+
+    // Panggil Gemini API (fallback model)
+    async function callGemini(payload) {
+        const models = ['gemini-1.5-flash-latest', 'gemini-1.5-flash', 'gemini-1.5-pro-latest', 'gemini-1.5-pro'];
+        let lastError = '';
+        for (const model of models) {
+            try {
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+                if (data.error) {
+                    lastError = data.error.message;
+                    continue;
+                }
+                return data;
+            } catch (err) { lastError = err.message; }
+        }
+        throw new Error(lastError || 'Gagal menghubungi AI');
+    }
+
+    // Analisis gambar
+    analyzeBtn.addEventListener('click', async () => {
+        if (!baseImgB64) { showNotif('Unggah gambar utama dulu', true); return; }
+        if (!apiKey) { promptApiKey(); return; }
+        analyzeBtn.disabled = true;
+        analyzeBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Menganalisis...';
+        
+        let parts = [];
+        const instruction = "Describe this image in detail: physical appearance, clothing, background, lighting, pose. Output in English, comma-separated keywords. No sentences.";
+        if (faceImgB64) {
+            parts = [
+                { text: "First image (body/environment):" },
+                { inlineData: { mimeType: baseImgMime || 'image/jpeg', data: baseImgB64 } },
+                { text: "Second image (face to swap):" },
+                { inlineData: { mimeType: faceImgMime || 'image/jpeg', data: faceImgB64 } },
+                { text: instruction + " Combine body from image1 and face from image2." }
+            ];
+        } else {
+            parts = [
+                { inlineData: { mimeType: baseImgMime || 'image/jpeg', data: baseImgB64 } },
+                { text: instruction }
+            ];
+        }
+        
+        try {
+            const data = await callGemini({ contents: [{ role: "user", parts }] });
+            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            basePrompt = text.trim();
+            basePromptText.textContent = basePrompt;
+            analyzeResultDiv.classList.remove('hidden');
+            showNotif('Analisis berhasil!');
+        } catch (err) {
+            showNotif('Error: ' + err.message, true);
+            console.error(err);
+        } finally {
+            analyzeBtn.disabled = false;
+            analyzeBtn.innerHTML = '<i class="fas fa-robot"></i> Analisis Gambar';
+            checkCanAnalyze();
+        }
+    });
+
+    // Generate prompt
+    generateBtn.addEventListener('click', () => {
+        if (!basePrompt && !baseImgB64) { showNotif('Analisis gambar dulu atau unggah referensi', true); return; }
+        const selects = document.querySelectorAll('.modifier-select');
+        let modifiers = {};
+        selects.forEach(select => {
+            modifiers[select.dataset.key] = select.value;
+        });
+        
+        let promptParts = ["(masterpiece, best quality, ultra-detailed, 8k, highres)"];
+        if (modifiers.artStyle) promptParts.push(modifiers.artStyle);
+        if (modifiers.shotType) promptParts.push(modifiers.shotType);
+        if (modifiers.cameraAngle) promptParts.push(modifiers.cameraAngle);
+        if (basePrompt) promptParts.push(basePrompt);
+        if (modifiers.gender) promptParts.push(modifiers.gender);
+        if (modifiers.expression) promptParts.push(`expression: ${modifiers.expression}`);
+        if (modifiers.attire) promptParts.push(`outfit: ${modifiers.attire}`);
+        if (modifiers.background) promptParts.push(`background: ${modifiers.background}`);
+        if (modifiers.lighting) promptParts.push(modifiers.lighting);
+        if (modifiers.colorTone) promptParts.push(modifiers.colorTone);
+        if (modifiers.pose && modifiers.pose !== 'Exact Replica (Kunci Pose Asli)') promptParts.push(`pose: ${modifiers.pose}`);
+        if (modifiers.bodyShape === 'Exact Replica (Kunci Proporsi Asli)') promptParts.push("maintain EXACT body proportions as reference");
+        
+        const final = promptParts.filter(Boolean).join(', ');
+        finalPromptText.value = final;
+        navigator.clipboard.writeText(final).then(() => {
+            showNotif('✅ Prompt tersalin ke clipboard!');
+        }).catch(() => {
+            showNotif('Gagal copy, silakan salin manual', true);
+        });
+    });
+
+    // Generate dropdown modifier
+    function buildModifiers() {
+        let html = '';
+        for (const [key, config] of Object.entries(modifierConfig)) {
+            html += `
+                <div>
+                    <label class="text-[11px] font-bold text-slate-400">${config.label}</label>
+                    <select data-key="${key}" class="modifier-select w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-xs">
+                        ${config.options.map(opt => `<option value="${opt}">${opt || '-- Default --'}</option>`).join('')}
+                    </select>
+                </div>
+            `;
+        }
+        modifierContainer.innerHTML = html;
+    }
+    buildModifiers();
+
+    // Inisialisasi
+    updateApiStatus();
+    checkCanAnalyze();
+    document.getElementById('apiKeyBtn').addEventListener('click', promptApiKey);
+</script>
 </body>
 </html>
+
